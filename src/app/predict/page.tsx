@@ -17,44 +17,53 @@ export default function PredictPage() {
   });
 
 const allLocations = [
-  'Electronic City Phase II', 'Chikka Tirupathi', 'Uttarahalli', 'Whitefield', 'Old Airport Road',
-  'Rajaji Nagar', 'Marathahalli', 'Hoodi', 'Banashankari', '7th Phase JP Nagar', 'Gottigere',
-  'Electronic City', 'Rajiv Nagar', 'Yelachenahalli', 'Bisuvanahalli', 'Sarjapur', 'Kanakpura',
-  'Raja Rajeshwari Nagar', 'Varthur', 'Kengeri', 'Rachenahalli', 'Arekere', 'Haralur Road',
-  'Ramamurthy Nagar', 'HSR Layout', 'Kothanur', 'Kalena Agrahara', 'Hebbal', 'Jayanagar',
-  'Malleshwaram', 'Begur Road', 'Indira Nagar', 'Kaggadasapura', 'JP Nagar', 'Bellandur',
-  'KR Puram', 'Hormavu', 'Electronics City Phase 1', 'Hennur Road', 'Thigalarapalya', 'Mysore Road',
-  'Magadi Road', 'Harlur', 'Bommanahalli', 'Babusapalaya', 'Sarjapur Road', 'Yelahanka',
-  'Devanahalli', 'Basavanagudi', 'Kumaraswami Layout', 'Banaswadi', 'Bannerghatta Road',
-  'Nagarbhavi', 'Hosa Road', 'Mahadevpura', 'CV Raman Nagar', 'Uttarahalli Hobli', 'Sahakara Nagar',
-  'Sanjay nagar', 'Wilson Garden', 'Domlur', 'Frazer Town', 'Chamarajpet', 'RT Nagar',
-  'Kalyan Nagar', 'Vijayanagar', 'Sadashiva Nagar', 'Cox Town', 'Koramangala', 'Kodichikkanahalli',
-  'Jakkur', 'Bommasandra', 'Sonnenahalli', 'Kudlu Gate', 'HSR Layout Sector 1', 'Narayana Nagar 1st Block',
-  'Hulimavu', 'BTM Layout', 'Ejipura', 'Basaveshwara Nagar', 'Bommasandra Industrial Area', 'other'
+  'Whitefield', 'Sarjapur', 'Electronic City', 'MG Road', 'Koramangala',
+  'Indira Nagar', 'Jayanagar', 'Hebbal', 'Rajaji Nagar', 'Yelahanka',
+  'Bannerghatta Road', 'HSR Layout', 'Marathahalli', 'Kengeri', 'Bellandur',
+  'BTM Layout', 'Banashankari', 'KR Puram', 'Hennur Road', 'Old Airport Road',
+  'Basavanagudi', 'Malleshwaram', 'Kaggadasapura', 'Begur Road', 'Devanahalli',
+  'Electronic City Phase II', 'Raja Rajeshwari Nagar', 'Kothanur', 'Varthur',
+  'Uttarahalli', 'Arekere', 'Kanakpura Road', 'Ramamurthy Nagar',
+  'Sahakara Nagar', 'Chikkabanavar', 'Kalena Agrahara', 'Domlur', 'Cox Town',
+  'Hoodi', 'Nagarbhavi', 'Yeshwanthpur', 'Mahadevpura', 'Thigalarapalya',
+  'Bommanahalli', 'Sonnenahalli', 'Kudlu Gate', 'Hulimavu', 'Ejipura',
+  'JP Nagar', 'Wilson Garden', 'Frazer Town', 'Harlur', 'RT Nagar',
+  'CV Raman Nagar', 'Sadashivanagar', 'Sanjay Nagar', 'Basaveshwara Nagar',
+  'Jakkur', 'Bommasandra', 'Thanisandra', 'Chandra Layout', 'Vijayanagar',
+  'Hosa Road', 'Narayana Nagar', 'Brookefield', 'HRBR Layout', 'Ulsoor',
+  'Richmond Town', 'Somasundara Palya'
 ];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const res = await fetch('http://127.0.0.1:8000/predict', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        total_sqft: Number(form.total_sqft),
-        bath: Number(form.bath),
-        balcony: Number(form.balcony),
-        price_per_sqft: Number(form.price_per_sqft),
-        location: form.location
-      })
-    });
-    const data = await res.json();
-    localStorage.setItem('predicted_price', JSON.stringify(data.predicted_price_lakhs));
-    localStorage.setItem('shap_values', JSON.stringify(data.shap_values || []));
-    router.push('/result');
-  };
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (!allLocations.includes(form.location)) {
+    alert("❌ Please select a valid location from the list.");
+    return;
+  }
+
+  const res = await fetch('http://127.0.0.1:8000/predict', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      total_sqft: Number(form.total_sqft),
+      bath: Number(form.bath),
+      balcony: Number(form.balcony),
+      price_per_sqft: Number(form.price_per_sqft),
+      location: form.location
+    })
+  });
+
+  const data = await res.json();
+  localStorage.setItem('predicted_price', JSON.stringify(data.predicted_price_lakhs));
+  localStorage.setItem('shap_values', JSON.stringify(data.shap_values || []));
+  router.push('/result');
+};
+
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -137,7 +146,7 @@ const allLocations = [
                 name={field}
                 value={form[field as keyof typeof form]}
                 onChange={handleChange}
-               placeholder={`e.g., ${field === 'total_sqft' ? '1200' : '7500'}`}
+                placeholder={`e.g., ${field === 'total_sqft' ? '1200' : '7500'}`}
                 required
                 className="p-3 rounded-xl bg-[#2b2f55] text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400"
               />
@@ -145,39 +154,39 @@ const allLocations = [
           ))}
 
           {[{ name: 'bath', label: 'Bathrooms' }, { name: 'balcony', label: 'Balcony' }].map(({ name, label }) => (
-            <div key={name} className="flex flex-col relative">
+            <div key={name} className="flex flex-col">
               <label className="text-sm font-semibold mb-2">{label}</label>
               <select
                 name={name}
                 value={form[name as keyof typeof form]}
                 onChange={handleChange}
                 required
-                className="p-3 pr-10 rounded-xl bg-[#2b2f55] text-white w-full focus:outline-none focus:ring-2 focus:ring-yellow-400 appearance-none"
+                className="p-3 rounded-xl bg-[#2b2f55] text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
               >
                 <option value="">Select</option>
                 {(name === 'bath' ? [1, 2, 3, 4, 5] : [0, 1, 2, 3]).map(n => (
                   <option key={n} value={n}>{n}</option>
                 ))}
               </select>
-              <div className="absolute right-3 top-[55%] transform -translate-y-1/2 pointer-events-none text-white text-sm">▼</div>
             </div>
           ))}
 
-          <div className="flex flex-col relative md:col-span-2 z-50">
+          <div className="flex flex-col md:col-span-2">
             <label className="text-sm font-semibold mb-2">Location</label>
-            <select
+            <input
+              list="locationOptions"
               name="location"
               value={form.location}
               onChange={handleChange}
+              placeholder="Type or choose location"
               required
-              className="p-3 pr-10 rounded-xl bg-[#2b2f55] text-white w-full focus:outline-none focus:ring-2 focus:ring-yellow-400 appearance-none"
-            >
-              <option value="">Select Location</option>
+              className="p-3 rounded-xl bg-[#2b2f55] text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            />
+            <datalist id="locationOptions">
               {allLocations.map(loc => (
-                <option key={loc} value={loc}>{loc}</option>
+                <option key={loc} value={loc} />
               ))}
-            </select>
-            <div className="absolute right-3 top-[55%] transform -translate-y-1/2 pointer-events-none text-white text-sm">▼</div>
+            </datalist>
           </div>
 
           <motion.button
