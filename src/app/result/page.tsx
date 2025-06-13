@@ -93,7 +93,7 @@ export default function ResultPage() {
         <nav className="fixed top-0 left-0 w-full z-50 flex items-center justify-between px-6 py-4 text-white">
           <div className="text-lg md:text-xl font-bold">🧠 Real Estate Price Predictor</div>
           <button onClick={() => router.push('/')} className="text-sm text-indigo-300 hover:text-indigo-100 transition">
-            ← Back to home
+            ← Back to Home
           </button>
         </nav>
 

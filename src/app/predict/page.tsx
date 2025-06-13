@@ -16,54 +16,101 @@ export default function PredictPage() {
     location: ''
   });
 
-const allLocations = [
-  'Whitefield', 'Sarjapur', 'Electronic City', 'MG Road', 'Koramangala',
-  'Indira Nagar', 'Jayanagar', 'Hebbal', 'Rajaji Nagar', 'Yelahanka',
-  'Bannerghatta Road', 'HSR Layout', 'Marathahalli', 'Kengeri', 'Bellandur',
-  'BTM Layout', 'Banashankari', 'KR Puram', 'Hennur Road', 'Old Airport Road',
-  'Basavanagudi', 'Malleshwaram', 'Kaggadasapura', 'Begur Road', 'Devanahalli',
-  'Electronic City Phase II', 'Raja Rajeshwari Nagar', 'Kothanur', 'Varthur',
-  'Uttarahalli', 'Arekere', 'Kanakpura Road', 'Ramamurthy Nagar',
-  'Sahakara Nagar', 'Chikkabanavar', 'Kalena Agrahara', 'Domlur', 'Cox Town',
-  'Hoodi', 'Nagarbhavi', 'Yeshwanthpur', 'Mahadevpura', 'Thigalarapalya',
-  'Bommanahalli', 'Sonnenahalli', 'Kudlu Gate', 'Hulimavu', 'Ejipura',
-  'JP Nagar', 'Wilson Garden', 'Frazer Town', 'Harlur', 'RT Nagar',
-  'CV Raman Nagar', 'Sadashivanagar', 'Sanjay Nagar', 'Basaveshwara Nagar',
-  'Jakkur', 'Bommasandra', 'Thanisandra', 'Chandra Layout', 'Vijayanagar',
-  'Hosa Road', 'Narayana Nagar', 'Brookefield', 'HRBR Layout', 'Ulsoor',
-  'Richmond Town', 'Somasundara Palya'
-];
+  const allLocations = [
+    'Whitefield', 'Sarjapur', 'Electronic City', 'MG Road', 'Koramangala',
+    'Indira Nagar', 'Jayanagar', 'Hebbal', 'Rajaji Nagar', 'Yelahanka',
+    'Bannerghatta Road', 'HSR Layout', 'Marathahalli', 'Kengeri', 'Bellandur',
+    'BTM Layout', 'Banashankari', 'KR Puram', 'Hennur Road', 'Old Airport Road',
+    'Basavanagudi', 'Malleshwaram', 'Kaggadasapura', 'Begur Road', 'Devanahalli',
+    'Electronic City Phase II', 'Raja Rajeshwari Nagar', 'Kothanur', 'Varthur',
+    'Uttarahalli', 'Arekere', 'Kanakpura Road', 'Ramamurthy Nagar',
+    'Sahakara Nagar', 'Chikkabanavar', 'Kalena Agrahara', 'Domlur', 'Cox Town',
+    'Hoodi', 'Nagarbhavi', 'Yeshwanthpur', 'Mahadevpura', 'Thigalarapalya',
+    'Bommanahalli', 'Sonnenahalli', 'Kudlu Gate', 'Hulimavu', 'Ejipura',
+    'JP Nagar', 'Wilson Garden', 'Frazer Town', 'Harlur', 'RT Nagar',
+    'CV Raman Nagar', 'Sadashivanagar', 'Sanjay Nagar', 'Basaveshwara Nagar',
+    'Jakkur', 'Bommasandra', 'Thanisandra', 'Chandra Layout', 'Vijayanagar',
+    'Hosa Road', 'Narayana Nagar', 'Brookefield', 'HRBR Layout', 'Ulsoor',
+    'Richmond Town', 'Somasundara Palya'
+  ];
+
+  const [filtered, setFiltered] = useState<string[]>(allLocations);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [highlight, setHighlight] = useState(-1);
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
+  const listItemsRef = useRef<(HTMLLIElement | null)[]>([]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm(f => ({ ...f, [name]: value }));
+
+    if (name === 'location') {
+      setShowDropdown(true);
+      if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
+      debounceTimeout.current = setTimeout(() => {
+        const val = value.toLowerCase();
+        setFiltered(allLocations.filter(loc => loc.toLowerCase().includes(val)));
+        setHighlight(-1);
+      }, 200);
+    }
   };
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showDropdown) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlight(h => Math.min(h + 1, filtered.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlight(h => Math.max(h - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (highlight >= 0) {
+        selectLocation(filtered[highlight]);
+      }
+    } else if (e.key === 'Escape') {
+      setShowDropdown(false);
+    }
+  };
 
-  if (!allLocations.includes(form.location)) {
-    alert("❌ Please select a valid location from the list.");
-    return;
-  }
+  const selectLocation = (loc: string) => {
+    setForm(f => ({ ...f, location: loc }));
+    setShowDropdown(false);
+  };
 
-  const res = await fetch('http://127.0.0.1:8000/predict', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      total_sqft: Number(form.total_sqft),
-      bath: Number(form.bath),
-      balcony: Number(form.balcony),
-      price_per_sqft: Number(form.price_per_sqft),
-      location: form.location
-    })
-  });
+  useEffect(() => {
+    if (highlight >= 0 && listItemsRef.current[highlight]) {
+      listItemsRef.current[highlight]?.scrollIntoView({
+        block: 'nearest',
+        behavior: 'smooth'
+      });
+    }
+  }, [highlight]);
 
-  const data = await res.json();
-  localStorage.setItem('predicted_price', JSON.stringify(data.predicted_price_lakhs));
-  localStorage.setItem('shap_values', JSON.stringify(data.shap_values || []));
-  router.push('/result');
-};
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!allLocations.includes(form.location)) {
+      alert("❌ Please select a valid location from the list.");
+      return;
+    }
 
+    const res = await fetch('http://127.0.0.1:8000/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        total_sqft: Number(form.total_sqft),
+        bath: Number(form.bath),
+        balcony: Number(form.balcony),
+        price_per_sqft: Number(form.price_per_sqft),
+        location: form.location
+      })
+    });
+
+    const data = await res.json();
+    localStorage.setItem('predicted_price', JSON.stringify(data.predicted_price_lakhs));
+    localStorage.setItem('shap_values', JSON.stringify(data.shap_values || []));
+    router.push('/result');
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -107,10 +154,10 @@ const handleSubmit = async (e: React.FormEvent) => {
   }, []);
 
   return (
-    <main className="relative min-h-screen w-full bg-gradient-to-br from-[#0f0c29] via-[#1a1d5e] to-[#111e3c] text-white overflow-hidden font-sans px-6 pt-20 pb-16">
+    <main className="relative min-h-screen w-full bg-gradient-to-br from-[#0f0c29] via-[#1a1d5e] to-[#111e3c] text-white overflow-hidden px-6 pt-20 pb-16 font-sans">
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-0" />
 
-      <nav className="fixed top-0 left-0 w-full z-50 px-6 py-4 flex items-center justify-between text-white">
+      <nav className="fixed top-0 left-0 w-full z-50 px-6 py-4 flex items-center justify-between">
         <div className="text-lg md:text-xl font-bold">🧠 Real Estate Price Predictor</div>
         <button
           onClick={() => router.push('/')}
@@ -171,22 +218,39 @@ const handleSubmit = async (e: React.FormEvent) => {
             </div>
           ))}
 
-          <div className="flex flex-col md:col-span-2">
+          <div className="flex flex-col md:col-span-2 relative">
             <label className="text-sm font-semibold mb-2">Location</label>
+            {showDropdown && filtered.length > 0 && (
+              <ul className="absolute bottom-full mb-1 w-full max-h-48 overflow-auto rounded-xl bg-[#2b2f55] text-white shadow-lg z-20">
+                {filtered.map((loc, i) => {
+                  listItemsRef.current[i] = null;
+                  return (
+                    <li
+                      key={loc}
+                      ref={el => {
+                        if (el) listItemsRef.current[i] = el;
+                      }}
+                      className={`px-3 py-2 cursor-pointer ${
+                        i === highlight ? 'bg-yellow-500 text-black' : 'hover:bg-[#414670]'
+                      }`}
+                      onMouseEnter={() => setHighlight(i)}
+                      onMouseDown={() => selectLocation(loc)}
+                    >
+                      {loc}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
             <input
-              list="locationOptions"
               name="location"
               value={form.location}
               onChange={handleChange}
+              onKeyDown={handleKeyDown}
               placeholder="Type or choose location"
               required
               className="p-3 rounded-xl bg-[#2b2f55] text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400"
             />
-            <datalist id="locationOptions">
-              {allLocations.map(loc => (
-                <option key={loc} value={loc} />
-              ))}
-            </datalist>
           </div>
 
           <motion.button
