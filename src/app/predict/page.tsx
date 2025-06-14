@@ -87,14 +87,17 @@ export default function PredictPage() {
     }
   }, [highlight]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!allLocations.includes(form.location)) {
-      alert("❌ Please select a valid location from the list.");
-      return;
-    }
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!allLocations.includes(form.location)) {
+    alert("❌ Please select a valid location from the list.");
+    return;
+  }
 
-    const res = await fetch('http://127.0.0.1:8000/predict', {
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
+
+  try {
+    const res = await fetch(`${apiBaseUrl}/predict`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -106,11 +109,20 @@ export default function PredictPage() {
       })
     });
 
+    if (!res.ok) {
+      throw new Error("API error: " + res.statusText);
+    }
+
     const data = await res.json();
     localStorage.setItem('predicted_price', JSON.stringify(data.predicted_price_lakhs));
     localStorage.setItem('shap_values', JSON.stringify(data.shap_values || []));
     router.push('/result');
-  };
+  } catch (error) {
+    console.error("❌ Prediction request failed:", error);
+    alert("Something went wrong. Please check the backend or console logs.");
+  }
+};
+
 
   useEffect(() => {
     const canvas = canvasRef.current;
