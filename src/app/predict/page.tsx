@@ -12,7 +12,7 @@ export default function PredictPage() {
     total_sqft: '',
     bath: '',
     balcony: '',
-    price_per_sqft: '',
+    bhk: '',
     location: ''
   });
 
@@ -78,51 +78,41 @@ export default function PredictPage() {
     setShowDropdown(false);
   };
 
-  useEffect(() => {
-    if (highlight >= 0 && listItemsRef.current[highlight]) {
-      listItemsRef.current[highlight]?.scrollIntoView({
-        block: 'nearest',
-        behavior: 'smooth'
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!allLocations.includes(form.location)) {
+      alert("❌ Please select a valid location from the list.");
+      return;
+    }
+
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
+
+    try {
+      const res = await fetch(`${apiBaseUrl}/predict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          total_sqft: Number(form.total_sqft),
+          bath: Number(form.bath),
+          balcony: Number(form.balcony),
+          bhk: Number(form.bhk),
+          location: form.location
+        })
       });
+
+      if (!res.ok) {
+        throw new Error("API error: " + res.statusText);
+      }
+
+      const data = await res.json();
+      localStorage.setItem('predicted_price', JSON.stringify(data.predicted_price_lakhs));
+      localStorage.setItem('predicted_price_per_sqft', JSON.stringify(data.predicted_price_per_sqft_inr));
+      router.push('/result');
+    } catch (error) {
+      console.error("❌ Prediction request failed:", error);
+      alert("Something went wrong. Please check the backend or console logs.");
     }
-  }, [highlight]);
-
- const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!allLocations.includes(form.location)) {
-    alert("❌ Please select a valid location from the list.");
-    return;
-  }
-
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
-
-  try {
-    const res = await fetch(`${apiBaseUrl}/predict`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        total_sqft: Number(form.total_sqft),
-        bath: Number(form.bath),
-        balcony: Number(form.balcony),
-        price_per_sqft: Number(form.price_per_sqft),
-        location: form.location
-      })
-    });
-
-    if (!res.ok) {
-      throw new Error("API error: " + res.statusText);
-    }
-
-    const data = await res.json();
-    localStorage.setItem('predicted_price', JSON.stringify(data.predicted_price_lakhs));
-    localStorage.setItem('shap_values', JSON.stringify(data.shap_values || []));
-    router.push('/result');
-  } catch (error) {
-    console.error("❌ Prediction request failed:", error);
-    alert("Something went wrong. Please check the backend or console logs.");
-  }
-};
-
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -165,6 +155,15 @@ export default function PredictPage() {
     });
   }, []);
 
+  useEffect(() => {
+    if (highlight >= 0 && listItemsRef.current[highlight]) {
+      listItemsRef.current[highlight]?.scrollIntoView({
+        block: 'nearest',
+        behavior: 'smooth'
+      });
+    }
+  }, [highlight]);
+
   return (
     <main className="relative min-h-screen w-full bg-gradient-to-br from-[#0f0c29] via-[#1a1d5e] to-[#111e3c] text-white overflow-hidden px-6 pt-20 pb-16 font-sans">
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full z-0" />
@@ -195,37 +194,42 @@ export default function PredictPage() {
         </p>
 
         <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-8 text-left">
-          {['total_sqft', 'price_per_sqft'].map((field, i) => (
-            <div key={i} className="flex flex-col">
+          <div className="flex flex-col">
+            <label className="text-sm font-semibold mb-2">Total Sqft</label>
+            <input
+              type="number"
+              name="total_sqft"
+              value={form.total_sqft}
+              onChange={handleChange}
+              placeholder="e.g., 1200"
+              required
+              className="p-3 rounded-xl bg-[#2b2f55] text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            />
+          </div>
+
+          {['bath', 'balcony', 'bhk'].map((field) => (
+            <div key={field} className="flex flex-col">
               <label className="text-sm font-semibold mb-2">
-                {field === 'total_sqft' ? 'Total Sqft' : 'Price Per Sqft (₹)'}
+                {field === 'bhk' ? 'BHK' : field.charAt(0).toUpperCase() + field.slice(1)}
               </label>
-              <input
-                type="number"
+              <select
                 name={field}
                 value={form[field as keyof typeof form]}
-                onChange={handleChange}
-                placeholder={`e.g., ${field === 'total_sqft' ? '1200' : '7500'}`}
-                required
-                className="p-3 rounded-xl bg-[#2b2f55] text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-              />
-            </div>
-          ))}
-
-          {[{ name: 'bath', label: 'Bathrooms' }, { name: 'balcony', label: 'Balcony' }].map(({ name, label }) => (
-            <div key={name} className="flex flex-col">
-              <label className="text-sm font-semibold mb-2">{label}</label>
-              <select
-                name={name}
-                value={form[name as keyof typeof form]}
                 onChange={handleChange}
                 required
                 className="p-3 rounded-xl bg-[#2b2f55] text-white focus:outline-none focus:ring-2 focus:ring-yellow-400"
               >
                 <option value="">Select</option>
-                {(name === 'bath' ? [1, 2, 3, 4, 5] : [0, 1, 2, 3]).map(n => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
+                {(() => {
+                  const options = field === 'bath'
+                    ? [1, 2, 3, 4, 5]
+                    : field === 'balcony'
+                    ? [0, 1, 2, 3]
+                    : [1, 2, 3, 4, 5];
+                  return options.map(n => (
+                    <option key={n} value={n}>{n}</option>
+                  ));
+                })()}
               </select>
             </div>
           ))}
